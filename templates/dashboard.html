@@ -1,0 +1,466 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FMEA Dashboard</title>
+    <link rel="stylesheet" href="/static/style.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f4f7fa;
+            padding: 20px;
+        }
+        h1, h2, h3 {
+            color: #333;
+            text-align: center;
+        }
+        .nav-buttons {
+            display: flex;
+            justify-content: center;
+            gap: 12px;
+            margin-bottom: 24px;
+        }
+        .nav-buttons button {
+            padding: 10px 20px;
+            background-color: #007bff;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+        }
+        .nav-buttons button:hover {
+            background-color: #0056b3;
+        }
+        .filter-container {
+            max-width: 600px;
+            margin: 0 auto 24px;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 12px;
+            justify-content: center;
+        }
+        .filter-container select, .filter-container input {
+            padding: 10px;
+            border-radius: 6px;
+            border: 1px solid #ddd;
+            font-size: 16px;
+        }
+        .filter-container button {
+            padding: 10px 20px;
+            background-color: #28a745;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+        }
+        .filter-container button:hover {
+            background-color: #218838;
+        }
+        table {
+            width: 100%;
+            max-width: 1200px;
+            margin: 0 auto 32px;
+            border-collapse: collapse;
+            background: #fff;
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+        }
+        th, td {
+            padding: 12px 16px;
+            text-align: left;
+            border-bottom: 1px solid #ddd;
+        }
+        th {
+            background-color: #007bff;
+            color: white;
+            cursor: pointer;
+        }
+        th:hover {
+            background-color: #0056b3;
+        }
+        tr.low-risk {
+            background-color: #90ee90;
+        }
+        tr.medium-risk {
+            background-color: #ffff99;
+        }
+        tr.high-risk {
+            background-color: #ffcccc;
+        }
+        .chart-row {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 32px;
+            justify-content: center;
+            margin-bottom: 32px;
+        }
+        .chart-container {
+            flex: 1;
+            min-width: 320px;
+            max-width: 480px;
+            background: #fff;
+            padding: 24px;
+            border-radius: 10px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+        }
+        .error {
+            color: red;
+            text-align: center;
+            margin-top: 16px;
+            display: none;
+        }
+        .error.show {
+            display: block;
+        }
+        .loading {
+            text-align: center;
+            display: none;
+            color: #555;
+            font-size: 16px;
+            margin-bottom: 24px;
+        }
+        .loading.show {
+            display: block;
+        }
+        .no-data {
+            text-align: center;
+            color: #555;
+            font-size: 16px;
+            margin-bottom: 32px;
+        }
+        @media (max-width: 768px) {
+            .filter-container {
+                flex-direction: column;
+                align-items: center;
+            }
+            table {
+                font-size: 14px;
+            }
+            .chart-container {
+                max-width: 100%;
+            }
+        }
+    </style>
+</head>
+<body>
+    <h1>FMEA Dashboard</h1>
+    <div class="nav-buttons">
+        <a href="/home"><button>Back Home</button></a>
+        <a href="/form_donation"><button>Data Entry (Donation)</button></a>
+        <a href="/form_transfusion"><button>Data Entry (Transfusion)</button></a>
+        <a href="/reports"><button>Reports</button></a>
+    </div>
+    <div class="filter-container">
+        <div>
+            <label for="form_type">Select Process:</label>
+            <select id="form_type">
+                <option value="all" {% if form_type == 'all' %}selected{% endif %}>All</option>
+                <option value="Blood Donation" {% if form_type == 'Blood Donation' %}selected{% endif %}>Blood Donation</option>
+                <option value="Blood Transfusion" {% if form_type == 'Blood Transfusion' %}selected{% endif %}>Blood Transfusion</option>
+            </select>
+        </div>
+        <div>
+            <label for="rpn_threshold">RPN Threshold:</label>
+            <input type="number" id="rpn_threshold" min="0" max="1000" value="{{ rpn_threshold }}">
+        </div>
+        <div>
+            <button onclick="applyFilters()">Apply</button>
+            <button onclick="resetFilters()">Reset</button>
+        </div>
+    </div>
+    <p class="error" id="error_message">No data available.</p>
+    <p class="loading" id="loading">Loading...</p>
+
+    <div id="top5_section">
+        {% if top_5 %}
+        <h2>Top 10High-Risk Failures (RPN > {{ rpn_threshold }})</h2>
+        <table id="top5_table">
+            <thead>
+                <tr>
+                    <th>Step</th>
+                    <th>Failure Mode</th>
+                    <th>S</th>
+                    <th>O</th>
+                    <th>D</th>
+                    <th>RPN</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for mode in top_5 %}
+                <tr class="{% if mode['RPN'] <= ((rpn_threshold/2)|int-1) %}low-risk{% elif mode['RPN'] <= rpn_threshold %}medium-risk{% else %}high-risk{% endif %}">
+                    <td>{{ mode['Step'] }}</td>
+                    <td>{{ mode['Failure Mode'] }}</td>
+                    <td>{{ mode['S'] }}</td>
+                    <td>{{ mode['O'] }}</td>
+                    <td>{{ mode['D'] }}</td>
+                    <td>{{ mode['RPN'] }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% else %}
+        <p class="no-data">No high-risk failures (RPN > {{ rpn_threshold }}) found for your account.</p>
+        {% endif %}
+    </div>
+
+    <div class="chart-row">
+        <div class="chart-container">
+            <h3>Top 10RPN Chart (RPN > <span id="rpn_display">{{ rpn_threshold }}</span>)</h3>
+            <canvas id="top5Chart"></canvas>
+        </div>
+        <div class="chart-container">
+            <h3>Risk Distribution</h3>
+            <canvas id="riskChart"></canvas>
+        </div>
+    </div>
+
+    <div id="all_modes_section">
+        {% if data %}
+        <h2>All Your Failure Modes</h2>
+        <table id="all_modes_table">
+            <thead>
+                <tr>
+                    <th data-sort="Step">Step</th>
+                    <th data-sort="Failure Mode">Failure Mode</th>
+                    <th data-sort="S">S</th>
+                    <th data-sort="O">O</th>
+                    <th data-sort="D">D</th>
+                    <th data-sort="RPN">RPN</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for mode in data %}
+                <tr class="{% if mode['RPN'] <= ((rpn_threshold/2)|int-1) %}low-risk{% elif mode['RPN'] <= rpn_threshold %}medium-risk{% else %}high-risk{% endif %}">
+                    <td>{{ mode['Step'] }}</td>
+                    <td>{{ mode['Failure Mode'] }}</td>
+                    <td>{{ mode['S'] }}</td>
+                    <td>{{ mode['O'] }}</td>
+                    <td>{{ mode['D'] }}</td>
+                    <td>{{ mode['RPN'] }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% else %}
+        <p class="no-data">No failure modes found for your account. Please add entries via Data Entry pages.</p>
+        {% endif %}
+    </div>
+
+    <script>
+        let top5Chart = null;
+        let riskChart = null;
+
+        async function applyFilters() {
+            try {
+                document.getElementById('loading').classList.add('show');
+                document.getElementById('error_message').classList.remove('show');
+
+                const formType = document.getElementById('form_type').value;
+                const rpnThresholdInput = document.getElementById('rpn_threshold').value;
+
+                if (!rpnThresholdInput || isNaN(rpnThresholdInput) || parseInt(rpnThresholdInput) < 0) {
+                    throw new Error('Please enter a valid RPN threshold (non-negative number).');
+                }
+                const rpnThreshold = parseInt(rpnThresholdInput);
+                if (rpnThreshold < 2) {
+                    throw new Error('RPN threshold must be at least 2 to define valid risk ranges.');
+                }
+
+                const response = await fetch('/api/dashboard_data', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                    body: new URLSearchParams({
+                        'form_type': formType,
+                        'rpn_threshold': rpnThreshold
+                    })
+                });
+
+                if (!response.ok) {
+                    throw new Error(`Failed to fetch data from server (status: ${response.status}).`);
+                }
+
+                const result = await response.json();
+                if (result.error) {
+                    throw new Error(result.error);
+                }
+
+                console.log('Fetched user data:', result);
+
+                // Update top 10table
+                const top5Section = document.getElementById('top5_section');
+                if (result.top_5 && result.top_5.length > 0) {
+                    top5Section.innerHTML = `
+                        <h2>Top 10High-Risk Failures (RPN > ${result.rpn_threshold})</h2>
+                        <table id="top5_table">
+                            <thead>
+                                <tr>
+                                    <th>Step</th>
+                                    <th>Failure Mode</th>
+                                    <th>S</th>
+                                    <th>O</th>
+                                    <th>D</th>
+                                    <th>RPN</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                ${result.top_5.map(mode => `
+                                    <tr class="${mode['RPN'] <= Math.floor(result.rpn_threshold/2)-1 ? 'low-risk' : mode['RPN'] <= result.rpn_threshold ? 'medium-risk' : 'high-risk'}">
+                                        <td>${mode['Step']}</td>
+                                        <td>${mode['Failure Mode']}</td>
+                                        <td>${mode['S']}</td>
+                                        <td>${mode['O']}</td>
+                                        <td>${mode['D']}</td>
+                                        <td>${mode['RPN']}</td>
+                                    </tr>
+                                `).join('')}
+                            </tbody>
+                        </table>
+                    `;
+                } else {
+                    top5Section.innerHTML = `<p class="no-data">No high-risk failures (RPN > ${result.rpn_threshold}) found for your account.</p>`;
+                }
+
+                // Update all modes table
+                const allModesSection = document.getElementById('all_modes_section');
+                if (result.data && result.data.length > 0) {
+                    allModesSection.innerHTML = `
+                        <h2>All Your Failure Modes</h2>
+                        <table id="all_modes_table">
+                            <thead>
+                                <tr>
+                                    <th data-sort="Step">Step</th>
+                                    <th data-sort="Failure Mode">Failure Mode</th>
+                                    <th data-sort="S">S</th>
+                                    <th data-sort="O">O</th>
+                                    <th data-sort="D">D</th>
+                                    <th data-sort="RPN">RPN</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                ${result.data.map(mode => `
+                                    <tr class="${mode['RPN'] <= Math.floor(result.rpn_threshold/2)-1 ? 'low-risk' : mode['RPN'] <= result.rpn_threshold ? 'medium-risk' : 'high-risk'}">
+                                        <td>${mode['Step']}</td>
+                                        <td>${mode['Failure Mode']}</td>
+                                        <td>${mode['S']}</td>
+                                        <td>${mode['O']}</td>
+                                        <td>${mode['D']}</td>
+                                        <td>${mode['RPN']}</td>
+                                    </tr>
+                                `).join('')}
+                            </tbody>
+                        </table>
+                    `;
+                } else {
+                    allModesSection.innerHTML = `<p class="no-data">No failure modes found for your account. Please add entries via Data Entry pages.</p>`;
+                }
+
+                // Update RPN display
+                document.getElementById('rpn_display').textContent = result.rpn_threshold;
+
+                // Update top 10chart
+                if (top5Chart) {
+                    top5Chart.destroy();
+                }
+                const top5Labels = result.top_5.map(mode => mode['Failure Mode'].length > 20 ? mode['Failure Mode'].slice(0, 17) + '...' : mode['Failure Mode']);
+                const top5Data = result.top_5.map(mode => mode['RPN']);
+                const top5Ctx = document.getElementById('top5Chart').getContext('2d');
+                top5Chart = new Chart(top5Ctx, {
+                    type: 'bar',
+                    data: {
+                        labels: top5Labels,
+                        datasets: [{
+                            label: `Top 10RPN (RPN > ${result.rpn_threshold})`,
+                            data: top5Data,
+                            backgroundColor: 'rgba(54, 162, 235, 0.2)',
+                            borderColor: 'rgba(54, 162, 235, 1)',
+                            borderWidth: 2
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        plugins: { legend: { display: false } },
+                        scales: { y: { beginAtZero: true, title: { display: true, text: 'RPN' } } }
+                    }
+                });
+
+                // Update risk distribution chart
+                if (riskChart) {
+                    riskChart.destroy();
+                }
+                const riskCtx = document.getElementById('riskChart').getContext('2d');
+                const mediumLower = Math.max(1, Math.floor(result.rpn_threshold / 2));
+                riskChart = new Chart(riskCtx, {
+                    type: 'pie',
+                    data: {
+                        labels: [`Low (0-${mediumLower-1})`, `Medium (${mediumLower}-${result.rpn_threshold})`, `High (>${result.rpn_threshold})`],
+                        datasets: [{
+                            data: [
+                                result.risk_dist[`Low (0-${mediumLower-1})`] || 0,
+                                result.risk_dist[`Medium (${mediumLower}-${result.rpn_threshold})`] || 0,
+                                result.risk_dist[`High (>${result.rpn_threshold})`] || 0
+                            ],
+                            backgroundColor: ['#90ee90', '#ffff99', '#ffcccc']
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        plugins: { legend: { position: 'bottom' } }
+                    }
+                });
+
+                // Re-attach table sorting event listeners
+                attachTableSorting();
+
+                document.getElementById('loading').classList.remove('show');
+            } catch (error) {
+                console.error('Error in applyFilters:', error);
+                document.getElementById('error_message').textContent = error.message || 'Error: Failed to load your data. Please try again or contact support.';
+                document.getElementById('error_message').classList.add('show');
+                document.getElementById('loading').classList.remove('show');
+            }
+        }
+
+        function resetFilters() {
+            document.getElementById('form_type').value = 'all';
+            document.getElementById('rpn_threshold').value = '60';
+            applyFilters();
+        }
+
+        function attachTableSorting() {
+            const table = document.getElementById('all_modes_table');
+            if (!table) return;
+            document.querySelectorAll('#all_modes_table th').forEach(header => {
+                header.addEventListener('click', () => {
+                    const sortKey = header.getAttribute('data-sort');
+                    const tbody = table.querySelector('tbody');
+                    const rows = Array.from(tbody.querySelectorAll('tr'));
+                    const isNumeric = ['S', 'O', 'D', 'RPN'].includes(sortKey);
+                    const isAscending = header.classList.toggle('asc');
+                    
+                    rows.sort((a, b) => {
+                        let aValue = a.querySelector(`td:nth-child(${Array.from(header.parentElement.children).indexOf(header) + 1})`).textContent;
+                        let bValue = b.querySelector(`td:nth-child(${Array.from(header.parentElement.children).indexOf(header) + 1})`).textContent;
+                        
+                        if (isNumeric) {
+                            aValue = parseFloat(aValue) || 0;
+                            bValue = parseFloat(bValue) || 0;
+                            return isAscending ? aValue - bValue : bValue - aValue;
+                        } else {
+                            return isAscending ? aValue.localeCompare(bValue) : bValue.localeCompare(aValue);
+                        }
+                    });
+
+                    tbody.innerHTML = '';
+                    rows.forEach(row => tbody.appendChild(row));
+                });
+            });
+        }
+
+        // Initial render
+        applyFilters();
+    </script>
+</body>
+</html>

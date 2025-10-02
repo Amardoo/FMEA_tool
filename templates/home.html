@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>FMEA Tool - Home</title>
+    <link rel="stylesheet" href="/static/style.css">
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f4f7fa;
+            margin: 0;
+            padding: 20px;
+        }
+        .intro {
+            max-width: 800px;
+            margin: 40px auto;
+            background: #fff;
+            border-radius: 12px;
+            box-shadow: 0 4px 16px rgba(0,0,0,0.1);
+            padding: 40px;
+            text-align: center;
+        }
+        h1 {
+            font-size: 32px;
+            color: #333;
+            margin-bottom: 20px;
+        }
+        p {
+            font-size: 18px;
+            color: #555;
+            line-height: 1.6;
+            margin-bottom: 32px;
+        }
+        .home-btns {
+            display: flex;
+            justify-content: center;
+            gap: 16px;
+        }
+        .home-btns a button {
+            padding: 12px 24px;
+            background-color: #007bff;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 16px;
+            transition: background 0.3s;
+        }
+        .home-btns a button:hover {
+            background-color: #0056b3;
+        }
+        .logout-btn {
+            margin-top: 24px;
+        }
+        .logout-btn button {
+            padding: 10px 20px;
+            background-color: #dc3545;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 16px;
+        }
+        .logout-btn button:hover {
+            background-color: #c82333;
+        }
+    </style>
+</head>
+<body>
+    
+    <div class="intro">
+        <h1>Welcome to the FMEA Tool</h1>
+        <p>
+            This web-based FMEA (Failure Modes and Effects Analysis) tool helps you systematically identify, assess, and prioritize risks in your processes or products. Easily enter failure modes, calculate Risk Priority Numbers (RPN), and visualize your top risks with interactive charts and reports.
+        </p>
+        <div class="home-btns">
+            <a href="/form_transfusion"><button>Blood Transfusion</button></a>
+            <a href="/form_donation"><button>Blood Donation</button></a>
+            <a href="/dashboard"><button>Dashboard</button></a>
+            <a href="/reports"><button>Reports</button></a>
+        </div>
+        <div class="logout-btn">
+            <a href="/logout"><button>Logout</button></a>
+        </div>
+    </div>
+</body>
+</html>

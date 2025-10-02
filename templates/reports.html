@@ -1,0 +1,348 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FMEA Reports</title>
+    <link rel="stylesheet" href="/static/style.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.16/jspdf.plugin.autotable.min.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f4f7fa;
+            padding: 20px;
+        }
+        h1, h2 {
+            color: #333;
+            text-align: center;
+        }
+        .nav-buttons {
+            display: flex;
+            justify-content: center;
+            gap: 12px;
+            margin-bottom: 24px;
+        }
+        .nav-buttons button {
+            padding: 10px 20px;
+            background-color: #007bff;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+        }
+        .nav-buttons button:hover {
+            background-color: #0056b3;
+        }
+        .filter-container {
+            max-width: 600px;
+            margin: 0 auto 24px;
+            text-align: center;
+        }
+        .filter-container select, .filter-container input {
+            padding: 10px;
+            border-radius: 6px;
+            border: 1px solid #ddd;
+            font-size: 16px;
+            margin-right: 10px;
+        }
+        .filter-container button {
+            padding: 10px 20px;
+            background-color: #28a745;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+        }
+        .filter-container button:hover {
+            background-color: #218838;
+        }
+        .export-buttons {
+            display: flex;
+            justify-content: center;
+            gap: 16px;
+            margin-bottom: 32px;
+            display: none; /* Hidden until filter is applied */
+        }
+        .export-buttons.show {
+            display: flex;
+        }
+        .export-buttons button {
+            padding: 12px 24px;
+            background-color: #28a745;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: background 0.3s;
+        }
+        .export-buttons button:hover {
+            background-color: #218838;
+        }
+        .results-container {
+            display: none; /* Hidden until filter is applied */
+        }
+        .results-container.show {
+            display: block;
+        }
+        table {
+            width: 100%;
+            max-width: 1200px;
+            margin: 0 auto 32px;
+            border-collapse: collapse;
+            background: #fff;
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+        }
+        th, td {
+            padding: 12px 16px;
+            text-align: left;
+            border-bottom: 1px solid #ddd;
+        }
+        th {
+            background-color: #007bff;
+            color: white;
+        }
+        .stats {
+            max-width: 600px;
+            margin: 0 auto;
+            background: #fff;
+            padding: 24px;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+        }
+        .stats p {
+            font-size: 16px;
+            margin: 8px 0;
+        }
+        .error {
+            color: red;
+            text-align: center;
+            margin-top: 16px;
+            display: none;
+        }
+        .error.show {
+            display: block;
+        }
+    </style>
+</head>
+<body>
+    <h1>FMEA Reports</h1>
+    <div class="nav-buttons">
+        <a href="/home"><button>Back Home</button></a>
+        <a href="/dashboard"><button>Dashboard</button></a>
+    </div>
+    <div class="filter-container">
+        <label for="form_type">Select Process:</label>
+        <select id="form_type">
+            <option value="all">All</option>
+            <option value="Blood Donation">Blood Donation</option>
+            <option value="Blood Transfusion">Blood Transfusion</option>
+        </select>
+        <label for="rpn_threshold">RPN Threshold:</label>
+        <input type="number" id="rpn_threshold" placeholder="Enter RPN" min="0" max="1000" required>
+        <button onclick="filterData()">Apply Filter</button>
+    </div>
+    <p class="error" id="no-data-error">No high-risk entries found for the selected process and RPN threshold.</p>
+    <div class="export-buttons">
+        <button onclick="exportToPDF()">Export High-Risk to PDF</button>
+        <button onclick="exportToCSV()">Export High-Risk to Excel (CSV)</button>
+    </div>
+    <div class="results-container">
+        <h2 id="low-risk-title">Failure Modes (RPN ≤ <span id="low-rpn-value">60</span>)</h2>
+        <table id="low-risk-table">
+            <tr>
+                <th>Step</th>
+                <th>Failure Mode</th>
+                <th>Cause</th>
+                <th>Control</th>
+                <th>Effect</th>
+                <th>S</th>
+                <th>O</th>
+                <th>D</th>
+                <th>RPN</th>
+            </tr>
+            <tbody></tbody>
+        </table>
+        <h2 id="high-risk-title">Failure Modes (RPN > <span id="high-rpn-value">60</span>)</h2>
+        <table id="high-risk-table">
+            <tr>
+                <th>Step</th>
+                <th>Failure Mode</th>
+                <th>Cause</th>
+                <th>Control</th>
+                <th>Effect</th>
+                <th>S</th>
+                <th>O</th>
+                <th>D</th>
+                <th>RPN</th>
+            </tr>
+            <tbody></tbody>
+        </table>
+        <h2>Statistical Summary</h2>
+        <div class="stats">
+            <p>Average RPN: <span id="avg-rpn">0</span></p>
+            <p>Maximum RPN: <span id="max-rpn">0</span></p>
+            <p>Minimum RPN: <span id="min-rpn">0</span></p>
+            <p>Number of High Risks (> <span id="high-risk-rpn">60</span>): <span id="high-risk-count">0</span></p>
+        </div>
+    </div>
+    <script>
+        const data = {{ data | tojson }} || [];
+
+        // Normalize fields
+        const normalizedData = data.map(item => ({
+            step: item['Step'] || '',
+            name: item['Failure Mode'] || '',
+            cause: item['Cause'] || '',
+            control: item['Control'] || '',
+            effect: item['Effect'] || '',
+            s: item['S'] ?? 0,
+            o: item['O'] ?? 0,
+            d: item['D'] ?? 0,
+            rpn: item['RPN'] ?? 0,
+            form_type: item['Form Type'] || ''
+        }));
+
+        let exportData = []; // Store data for export (only high-risk entries)
+
+        function filterData() {
+            const formType = document.getElementById('form_type').value;
+            const rpnThresholdInput = document.getElementById('rpn_threshold').value;
+            if (!rpnThresholdInput) {
+                alert('Please enter an RPN threshold.');
+                return;
+            }
+            const rpnThreshold = parseInt(rpnThresholdInput) || 60;
+            const filteredData = formType === 'all' ? normalizedData : normalizedData.filter(item => item.form_type === formType);
+            exportData = filteredData.filter(item => item.rpn > rpnThreshold); // Only high-risk for export
+            console.log('Filtered Data:', filteredData);
+            console.log('Export Data (RPN > ' + rpnThreshold + '):', exportData);
+            const lowRisk = filteredData.filter(item => item.rpn <= rpnThreshold);
+            const highRisk = filteredData.filter(item => item.rpn > rpnThreshold);
+            updateTables(lowRisk, highRisk, rpnThreshold);
+            updateStats(filteredData, rpnThreshold);
+            document.querySelector('.results-container').classList.add('show');
+            document.querySelector('.export-buttons').classList.toggle('show', exportData.length > 0);
+            document.getElementById('no-data-error').classList.toggle('show', exportData.length === 0);
+        }
+
+        function updateTables(lowRisk, highRisk, rpnThreshold) {
+            const lowRiskTable = document.getElementById('low-risk-table');
+            const highRiskTable = document.getElementById('high-risk-table');
+            const lowTbody = lowRiskTable.querySelector('tbody');
+            const highTbody = highRiskTable.querySelector('tbody');
+            lowTbody.innerHTML = '';
+            highTbody.innerHTML = '';
+
+            lowRisk.forEach(item => {
+                const row = lowTbody.insertRow();
+                row.insertCell().textContent = item.step;
+                row.insertCell().textContent = item.name;
+                row.insertCell().textContent = item.cause;
+                row.insertCell().textContent = item.control;
+                row.insertCell().textContent = item.effect;
+                row.insertCell().textContent = item.s;
+                row.insertCell().textContent = item.o;
+                row.insertCell().textContent = item.d;
+                row.insertCell().textContent = item.rpn;
+            });
+
+            highRisk.forEach(item => {
+                const row = highTbody.insertRow();
+                row.insertCell().textContent = item.step;
+                row.insertCell().textContent = item.name;
+                row.insertCell().textContent = item.cause;
+                row.insertCell().textContent = item.control;
+                row.insertCell().textContent = item.effect;
+                row.insertCell().textContent = item.s;
+                row.insertCell().textContent = item.o;
+                row.insertCell().textContent = item.d;
+                row.insertCell().textContent = item.rpn;
+            });
+
+            document.getElementById('low-rpn-value').textContent = rpnThreshold;
+            document.getElementById('high-rpn-value').textContent = rpnThreshold;
+            document.getElementById('high-risk-rpn').textContent = rpnThreshold;
+        }
+
+        function updateStats(data, rpnThreshold) {
+            const avgRpn = data.length ? Math.round((data.reduce((sum, item) => sum + item.rpn, 0) / data.length) * 100) / 100 : 0;
+            const maxRpn = data.length ? Math.max(...data.map(item => item.rpn)) : 0;
+            const minRpn = data.length ? Math.min(...data.map(item => item.rpn)) : 0;
+            const highRiskCount = data.filter(item => item.rpn > rpnThreshold).length;
+
+            document.getElementById('avg-rpn').textContent = avgRpn;
+            document.getElementById('max-rpn').textContent = maxRpn;
+            document.getElementById('min-rpn').textContent = minRpn;
+            document.getElementById('high-risk-count').textContent = highRiskCount;
+        }
+
+        function exportToCSV() {
+            if (exportData.length === 0) {
+                alert('No high-risk entries to export for the selected process and RPN threshold.');
+                return;
+            }
+            let csv = 'Step,Failure Mode,Cause,Control,Effect,S,O,D,RPN,Form Type\n';
+            exportData.forEach(row => {
+                csv += `${row.step},${row.name},${row.cause},${row.control},${row.effect},${row.s},${row.o},${row.d},${row.rpn},${row.form_type}\n`;
+            });
+            const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'fmea_high_risk_report.csv';
+            a.click();
+        }
+
+        function exportToPDF() {
+            if (exportData.length === 0) {
+                alert('No high-risk entries to export for the selected process and RPN threshold.');
+                return;
+            }
+            const { jsPDF } = window.jspdf;
+            const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
+            doc.setFontSize(18);
+            doc.text('FMEA High-Risk Report (RPN > ' + document.getElementById('high-rpn-value').textContent + ')', 148, 20, { align: 'center' });
+
+            const headers = [['Step', 'Failure Mode', 'Cause', 'Control', 'Effect', 'S', 'O', 'D', 'RPN', 'Form Type']];
+            const body = exportData.map(row => [
+                row.step,
+                row.name,
+                row.cause,
+                row.control,
+                row.effect,
+                row.s,
+                row.o,
+                row.d,
+                row.rpn,
+                row.form_type
+            ]);
+
+            doc.autoTable({
+                startY: 30,
+                head: headers,
+                body: body,
+                theme: 'grid',
+                styles: { fontSize: 10, cellPadding: 2, overflow: 'linebreak' },
+                headStyles: { fillColor: [0, 123, 255], textColor: 255, fontStyle: 'bold' },
+                columnStyles: {
+                    0: { cellWidth: 20 },
+                    1: { cellWidth: 40 },
+                    2: { cellWidth: 40 },
+                    3: { cellWidth: 40 },
+                    4: { cellWidth: 40 },
+                    5: { cellWidth: 10 },
+                    6: { cellWidth: 10 },
+                    7: { cellWidth: 10 },
+                    8: { cellWidth: 15 },
+                    9: { cellWidth: 20 }
+                }
+            });
+
+            doc.save('fmea_high_risk_report.pdf');
+        }
+    </script>
+</body>
+</html>
