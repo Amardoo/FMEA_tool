@@ -63,7 +63,7 @@ def seed_db():
 def get_filtered_data(user_id, form_type='all', rpn_threshold=60):
     conn = sqlite3.connect('fmea.db')
     c = conn.cursor()
-    query = 'SELECT step, failure_mode, s, o, d, rpn, form_type FROM failure_modes WHERE user_id = ?'
+    query = 'SELECT step, failure_mode, cause, control, effect, s, o, d, rpn, form_type FROM failure_modes WHERE user_id = ?'
     params = [user_id]
     if form_type != 'all':
         query += ' AND form_type = ?'
@@ -73,11 +73,14 @@ def get_filtered_data(user_id, form_type='all', rpn_threshold=60):
     data = [{
         'Step': row[0] or '',
         'Failure Mode': row[1] or '',
-        'S': row[2] or 0,
-        'O': row[3] or 0,
-        'D': row[4] or 0,
-        'RPN': row[5] or 0,
-        'Form Type': row[6] or ''
+        'cause': row[2] or '',
+        'control': row[3] or '',
+        'effect': row[4] or '',
+        'S': row[5] or 0,
+        'O': row[6] or 0,
+        'D': row[7] or 0,
+        'RPN': row[8] or 0,
+        'Form Type': row[9] or ''
     } for row in rows]
     conn.close()
     
