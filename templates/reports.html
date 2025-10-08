@@ -155,9 +155,9 @@
             <tr>
                 <th>Step</th>
                 <th>Failure Mode</th>
+                <th>Effect</th>
                 <th>Cause</th>
                 <th>Control</th>
-                <th>Effect</th>
                 <th>S</th>
                 <th>O</th>
                 <th>D</th>
@@ -170,9 +170,9 @@
             <tr>
                 <th>Step</th>
                 <th>Failure Mode</th>
-                <th>Cause</th>
+                 <th>Effect</th>
+                <th>Cause</th>               
                 <th>Control</th>
-                <th>Effect</th>
                 <th>S</th>
                 <th>O</th>
                 <th>D</th>
@@ -195,9 +195,9 @@
         const normalizedData = data.map(item => ({
             step: item['Step'] || '',
             name: item['Failure Mode'] || '',
+             effect: item['effect'] || '',
             cause: item['cause'] || '',
-            control: item['control'] || '',
-            effect: item['effect'] || '',
+            control: item['control'] || '',     
             s: item['S'] ?? 0,
             o: item['O'] ?? 0,
             d: item['D'] ?? 0,
@@ -240,9 +240,9 @@
                 const row = lowTbody.insertRow();
                 row.insertCell().textContent = item.step;
                 row.insertCell().textContent = item.name;
+                row.insertCell().textContent = item.effect;
                 row.insertCell().textContent = item.cause;
                 row.insertCell().textContent = item.control;
-                row.insertCell().textContent = item.effect;
                 row.insertCell().textContent = item.s;
                 row.insertCell().textContent = item.o;
                 row.insertCell().textContent = item.d;
@@ -253,9 +253,9 @@
                 const row = highTbody.insertRow();
                 row.insertCell().textContent = item.step;
                 row.insertCell().textContent = item.name;
+                row.insertCell().textContent = item.effect;
                 row.insertCell().textContent = item.cause;
                 row.insertCell().textContent = item.control;
-                row.insertCell().textContent = item.effect;
                 row.insertCell().textContent = item.s;
                 row.insertCell().textContent = item.o;
                 row.insertCell().textContent = item.d;
