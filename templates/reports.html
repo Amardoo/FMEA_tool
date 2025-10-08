@@ -195,9 +195,9 @@
         const normalizedData = data.map(item => ({
             step: item['Step'] || '',
             name: item['Failure Mode'] || '',
-            cause: item['Cause'] || '',
-            control: item['Control'] || '',
-            effect: item['Effect'] || '',
+            cause: item['cause'] || '',
+            control: item['control'] || '',
+            effect: item['effect'] || '',
             s: item['S'] ?? 0,
             o: item['O'] ?? 0,
             d: item['D'] ?? 0,
